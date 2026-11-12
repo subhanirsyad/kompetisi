@@ -138,6 +138,12 @@ def _find_credentials(candidates) -> list:
         candidates = [candidates]
     here = os.path.dirname(os.path.abspath(__file__))
     found = []
+    try:  # Streamlit Cloud: [gcp_service_account] di Secrets
+        import streamlit as st
+        if "gcp_service_account" in st.secrets:
+            found.append(("st.secrets", dict(st.secrets["gcp_service_account"])))
+    except Exception:
+        pass
     for c in candidates or []:
         for path in (c, os.path.join(here, c)):
             if path and os.path.isfile(path):
@@ -171,6 +177,8 @@ def gs_client(credential_files=None):
         raise RuntimeError("Library gspread belum terpasang. Jalankan: pip install gspread google-auth") from e
     for path, info in _find_credentials(credential_files):
         if info.get("type") == "service_account":
+            if path == "st.secrets":
+                return gspread.service_account_from_dict(info)
             return gspread.service_account(filename=path)
         if "installed" in info or "web" in info:
             return gspread.oauth(credentials_filename=path)
